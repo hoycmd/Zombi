@@ -3,7 +3,7 @@ import { Game, Players, Inventory, LeaderBoard, BuildBlocksSet, Teams, Damage, B
 
 // константы
 const WaitingPlayersTime = 10;
-const DefBaseFromZombies = 50;
+const DefBaseFromZombiesTime = 50;
 const GameModeTime = 300;
 const End0fMatchTime = 5;
 const KILL_SCORES = 15;
@@ -40,9 +40,13 @@ Ui.GetContext().MainTimerId.Value = mainTimer.Id;
 // создаем стандартные команды
 const blueTeam = default_teams.CreateNewArea("Blue", "\nЛюди", new Color(0, 0, 125/255, 0), 1, BuildBlocksSet.Blue);
 const zombieTeam = default_teams.CreateNewArea("Red", "\nЗомби", new Color(0, 125/255, 0, 0), 1, BuildBlocksSet.Red);
+blueTeam.contextedProperties.StartBlocksCount.Value = 61;
+blueTeam.contextedProperties.BuildSpeed.Value = 1;
 zombieTeam.Spawns.RespawnTime.Value = 10;
 zombieTeam.contextedProperties.InventoryType.Value = true;
 zombieTeam.contextedProperties.SkinType.Value = 1;
+zombieTeam.contextedProperties.StartBlocksCount.Value = 31;
+zombieTeam.contextedProperties.BuildSpeed.Value = 3;
 
 // настраиваем параметры, которые нужно выводить в лидерборде
 LeaberBoard.PlayerLeaberBoardValues = [
@@ -106,6 +110,93 @@ scoresTimer.OnTimer.Add(function() {
 		player.Properties.Scores.Value += TIMER_SCORES;
 	}
 });
+
+// таймер переключения состояний
+mainTimer.OnTimer.Add(function () {
+	switch (stateProp.Value) {
+		case WaitingStateValue:
+			SetBuildMode();
+			break;
+		case DefBaseStateValue:
+			SetGameMode();
+			break;
+		case GameModeStateValue:
+			SetEnd_End0fMatch();
+			break;
+		case End0fMatchStateValue:
+			start_vote();
+			break;
+	}
+});
+
+// изначально задаем состояние ожидание других игроков 
+SetWaitingMode();
+
+// состояние игры
+function SetWaitingMode() {
+ stateProp.Value = WaitingStateValue;
+ Ui.GetContext().Hint.Value = "Ожидание, всех - игроков...";
+ Spawns.GetContext().Enable = false;
+ mainTimer.Restart(WaitingPlayersTime);
+}
+function SetDefBase() {
+ stateProp.Value = DefBaseStateValue;
+ zombieTeam.Ui.Hint.Value = "Выжившие, готовятся к атаке!";
+ blueTeam.Ui.Hint.Value = "Застраивайте базу, от зараженных!";
+
+ // set blueTeam
+ var inventory = Inventory.GetContext(blueTeam);
+ inventory.Main.Value = false;
+ inventory.Secondary.Value = false;
+ inventory.Melee.Value = true;
+ inventory.Explosive.Value = false;
+ inventory.Build.Value = true;
+ inventory.BuildInfinity.Value = true;
+
+ // set zombiTeam
+ var inventory = Inventory.GetContext(zombieTeam);
+ inventory.Main.Value = false;
+ inventory.Secondary.Value = false;
+ inventory.Melee.Value = false;
+ inventory.Explosive.Value = false;
+ inventory.Build.Value = false;
+ inventory.BuildInfinity.Value = false;
+ // урон разрешен 
+ Damage.GetContext().DamageOut.Value = true;
+
+ Spawns.GetContext().Enable = true;
+ mainTimer.Restart(DefBaseFromZombiesTime);
+ SpawnTeams();
+}
+function SetGameMode() {
+ stateProp.Value = GameModeStateValue;
+ zombieTeam.Ui.Hint.Value = "Заразите, всех - выживших!";
+ blueTeam.Ui.Hint.Value = "Защищайтесь, от зараженных!";
+
+ // set blueTeam
+ var inventory = Inventory.GetContext(blueTeam);
+ inventory.Main.Value = true;
+ inventory.Secondary.Value = true;
+ inventory.Melee.Value = true;
+ inventory.Explosive.Value = true;
+ inventory.Build.Value = true;
+ inventory.BuildInfinity.Value = false;
+
+ // set zombiTeam
+ var inventory = Inventory.GetContext(zombieTeam);
+ inventory.Main.Value = false;
+ inventory.Secondary.Value = false;
+ inventory.Melee.Value = true;
+ inventory.Explosive.Value = true;
+ inventory.Build.Value = true;
+ inventory.BuildInfinity.Value = false;
+
+ Spawns.GetContext().Despawn();
+ mainTimer.Restart(GameModeTime);
+ SpawnsTeams();
+}
+function End_End0fMatch() {
+ 
 
 
 
